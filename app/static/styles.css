@@ -28,7 +28,7 @@ body {
 }
 
 .wrap {
-  width: min(720px, calc(100% - 48px));
+  width: min(840px, calc(100% - 48px));
   margin: 56px auto 72px;
 }
 
@@ -40,13 +40,21 @@ body {
   text-transform: uppercase;
 }
 
-h1 {
+h1,
+h2 {
   margin: 0;
   font-family: Georgia, "Palatino Linotype", Palatino, serif;
-  font-size: 2.6rem;
   font-weight: 500;
   letter-spacing: -0.03em;
   line-height: 1.1;
+}
+
+h1 {
+  font-size: 2.6rem;
+}
+
+h2 {
+  font-size: 1.7rem;
 }
 
 .lede {
@@ -167,6 +175,51 @@ dd {
 .footnote {
   margin: 18px 4px 0;
   font-size: 0.92rem;
+}
+
+.extract-panel {
+  margin-top: 22px;
+}
+
+input[type="text"] {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
+
+.line-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.line-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #fff;
+}
+
+.line-card h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.raw-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: Consolas, "Courier New", monospace;
+}
+
+.result[data-state="empty"] {
+  background: var(--pending-bg);
+  border: 1px solid var(--line);
 }
 
 @media (max-width: 640px) {

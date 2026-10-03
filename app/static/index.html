@@ -12,8 +12,8 @@
       <p class="eyebrow">Purchase Intelligence</p>
       <h1>Receipt intake</h1>
       <p class="lede">
-        Preserve the original receipt image. This step stores the file as evidence.
-        It does not read, extract, or classify the purchase.
+        Preserve the original receipt image, then read that preserved evidence into an
+        unconfirmed extraction. The original image stays unchanged.
       </p>
 
       <form id="intake-form" class="panel" action="/api/receipts" method="post" enctype="multipart/form-data">
@@ -30,7 +30,21 @@
         <div id="result" class="result" role="status" aria-live="polite"></div>
       </form>
 
-      <p class="footnote">Original bytes are stored locally on this machine.</p>
+      <section class="panel extract-panel">
+        <h2>Extraction</h2>
+        <p class="hint">
+          Use an evidence ID from a preserved receipt. This creates an unconfirmed candidate.
+          It does not confirm the purchase or change the original image.
+        </p>
+        <form id="extract-form">
+          <label for="evidence-id">Evidence ID</label>
+          <input id="evidence-id" name="evidence_id" type="text" autocomplete="off" spellcheck="false" maxlength="80">
+          <button id="extract-button" type="submit">Extract receipt</button>
+          <div id="extraction-result" class="result" role="status" aria-live="polite"></div>
+        </form>
+      </section>
+
+      <p class="footnote">Original receipt bytes stay on this machine, separate from extracted candidates.</p>
     </main>
     <script src="/static/app.js"></script>
   </body>

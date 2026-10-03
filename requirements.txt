@@ -2,3 +2,9 @@ fastapi==0.142.2
 uvicorn==0.54.0
 python-multipart==0.0.32
 pillow==12.3.0
+winrt-runtime==3.2.1
+winrt-Windows.Foundation==3.2.1
+winrt-Windows.Foundation.Collections==3.2.1
+winrt-Windows.Graphics.Imaging==3.2.1
+winrt-Windows.Media.Ocr==3.2.1
+winrt-Windows.Storage.Streams==3.2.1
