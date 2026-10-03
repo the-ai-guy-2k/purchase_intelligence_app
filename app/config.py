@@ -1,0 +1,47 @@
+"""Local runtime settings for receipt intake."""
+
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass
+from pathlib import Path
+
+# A phone photo or flatbed scan of a retail receipt fits comfortably in 10 MB.
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+# Multipart bodies include boundaries and headers around the file bytes.
+MULTIPART_OVERHEAD_BYTES = 256 * 1024
+# Reject decompression bombs while still allowing a high-resolution receipt photo.
+MAX_IMAGE_PIXELS = 80_000_000
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_DATA_DIR = PROJECT_ROOT / "data" / "receipt_evidence"
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+
+
+@dataclass(frozen=True)
+class Settings:
+    data_dir: Path
+    max_upload_bytes: int = MAX_UPLOAD_BYTES
+
+    @property
+    def files_dir(self) -> Path:
+        return self.data_dir / "files"
+
+    @property
+    def db_path(self) -> Path:
+        return self.data_dir / "evidence.sqlite"
+
+    @property
+    def max_upload_megabytes(self) -> int:
+        return self.max_upload_bytes // (1024 * 1024)
+
+
+def load_settings() -> Settings:
+    override = os.environ.get("PIA_DATA_DIR")
+    data_dir = Path(override) if override else DEFAULT_DATA_DIR
+    return Settings(data_dir=data_dir)
+
+
+def size_limit_message(max_upload_bytes: int = MAX_UPLOAD_BYTES) -> str:
+    megabytes = max_upload_bytes // (1024 * 1024)
+    return f"File exceeds the {megabytes} MB limit."

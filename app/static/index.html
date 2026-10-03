@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Purchase Intelligence — Receipt intake</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <main class="wrap">
+      <p class="eyebrow">Purchase Intelligence</p>
+      <h1>Receipt intake</h1>
+      <p class="lede">
+        Preserve the original receipt image. This step stores the file as evidence.
+        It does not read, extract, or classify the purchase.
+      </p>
+
+      <form id="intake-form" class="panel" action="/api/receipts" method="post" enctype="multipart/form-data">
+        <label for="receipt-file">Receipt image</label>
+        <input
+          id="receipt-file"
+          name="file"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+          aria-describedby="file-hint"
+        >
+        <p id="file-hint" class="hint">JPEG, PNG, or WEBP. Maximum __MAX_MB__ MB.</p>
+        <button id="submit-button" type="submit">Preserve receipt</button>
+        <div id="result" class="result" role="status" aria-live="polite"></div>
+      </form>
+
+      <p class="footnote">Original bytes are stored locally on this machine.</p>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
