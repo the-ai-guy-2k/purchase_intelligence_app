@@ -10,6 +10,10 @@ Extraction uses the Windows OCR engine already on this machine, behind a replace
 
 Requesting extraction again for the same evidence ID replaces the previous unconfirmed extraction and its line candidates. One current extraction is kept for each evidence ID. The original receipt file and evidence record are not modified.
 
+ACI-003 adds review, correction, and explicit confirmation. Confidence is a deterministic review hint: high for an unambiguous parsed value, medium for a text candidate, low when a value is missing or the raw text shows something the parser refused, and absent when an optional value was not on the receipt. Highlighted fields can be corrected. Blank optional fields stay null.
+
+Confirm purchase is the only action that creates a confirmed purchase. One extraction has one confirmed purchase. Confirming that extraction again is rejected, and the confirmed record is read-only. The raw extraction text and the original receipt are not rewritten. Each confirmed item keeps the source line id and the raw line text.
+
 ## Run
 
 Requires Python 3.12.
@@ -23,7 +27,7 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 Open http://127.0.0.1:8000
 
-Receipt evidence is written under `data/receipt_evidence/`. Extraction candidates are written under `data/receipt_extraction/`. Both directories are gitignored. Do not commit uploaded receipts or extraction output.
+Receipt evidence is written under `data/receipt_evidence/`. Extraction candidates are written under `data/receipt_extraction/`. Confirmed purchases are written under `data/confirmed_purchases/`. Those directories are gitignored. Do not commit uploaded receipts, extractions, or confirmed purchases.
 
 The default text recognizer requires Windows.
 

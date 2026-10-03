@@ -36,6 +36,10 @@ class Settings:
         return self.data_dir.parent / "receipt_extraction" / "extractions.sqlite"
 
     @property
+    def confirmed_db_path(self) -> Path:
+        return self.data_dir.parent / "confirmed_purchases" / "confirmed.sqlite"
+
+    @property
     def max_upload_megabytes(self) -> int:
         return self.max_upload_bytes // (1024 * 1024)
 

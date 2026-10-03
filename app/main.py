@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 
 from fastapi import FastAPI, File, Request, UploadFile
@@ -10,7 +11,12 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import STATIC_DIR, Settings, load_settings, size_limit_message
+from app.purchase_confirmation.confidence import assess_extraction
+from app.purchase_confirmation.errors import AlreadyConfirmed, ConfirmationRejected, ExtractionNotFound
+from app.purchase_confirmation.repository import get_purchase_for_extraction, init_confirmed_db
+from app.purchase_confirmation.service import confirm_purchase, read_purchase
 from app.receipt_extraction.errors import EvidenceNotFound
+from app.receipt_extraction.models import ExtractionRecord
 from app.receipt_extraction.repository import init_extraction_db
 from app.receipt_extraction.service import extract_preserved_receipt, read_extraction
 from app.receipt_intake.errors import IntakeRejected
@@ -21,6 +27,7 @@ from app.receipt_intake.validation import declared_body_too_large, read_limited_
 
 logger = logging.getLogger("purchase_intelligence.receipt_intake")
 extraction_logger = logging.getLogger("purchase_intelligence.receipt_extraction")
+confirmation_logger = logging.getLogger("purchase_intelligence.confirmation")
 
 _GENERIC_FAILURE = "The upload could not be processed."
 
@@ -31,6 +38,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     settings.files_dir.mkdir(parents=True, exist_ok=True)
     init_db(settings.db_path)
     init_extraction_db(settings)
+    init_confirmed_db(settings)
 
     app = FastAPI(
         title="Purchase Intelligence",
@@ -112,7 +120,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             len(record.lines),
         )
         status_code = 422 if record.extraction_status == "failed" else 200
-        return JSONResponse(status_code=status_code, content=record.to_public_dict())
+        return JSONResponse(status_code=status_code, content=_reviewed_extraction(settings, record))
 
     @app.get("/api/receipts/{evidence_id}/extraction")
     def read_saved_extraction(evidence_id: str) -> JSONResponse:
@@ -125,7 +133,58 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 status_code=404,
                 content={"status": "not_found", "reason": "No extraction exists for this receipt."},
             )
-        return JSONResponse(status_code=200, content=record.to_public_dict())
+        return JSONResponse(status_code=200, content=_reviewed_extraction(settings, record))
+
+    @app.post("/api/purchases")
+    async def confirm_reviewed_purchase(request: Request) -> JSONResponse:
+        try:
+            payload = await request.json()
+        except json.JSONDecodeError:
+            return _confirmation_rejected("The confirmation could not be read.")
+        try:
+            purchase = confirm_purchase(settings, payload)
+        except EvidenceNotFound:
+            confirmation_logger.info("confirmation rejected reason=evidence_not_found")
+            return _not_found()
+        except ExtractionNotFound:
+            confirmation_logger.info("confirmation rejected reason=extraction_not_found")
+            return JSONResponse(
+                status_code=404,
+                content={"status": "not_found", "reason": "The extraction was not found."},
+            )
+        except AlreadyConfirmed as exc:
+            confirmation_logger.info("confirmation rejected reason=already_confirmed")
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "status": "rejected",
+                    "reason": "This extraction is already confirmed.",
+                    "purchase_id": exc.purchase_id,
+                },
+            )
+        except ConfirmationRejected as exc:
+            confirmation_logger.info("confirmation rejected")
+            return _confirmation_rejected(exc.reason)
+        except Exception:
+            confirmation_logger.exception("confirmation failed")
+            return _confirmation_rejected("The purchase could not be confirmed.", status_code=500)
+        confirmation_logger.info(
+            "purchase confirmed purchase_id=%s evidence_id=%s item_count=%s",
+            purchase.purchase_id,
+            purchase.evidence_id,
+            len(purchase.items),
+        )
+        return JSONResponse(status_code=201, content=purchase.to_public_dict())
+
+    @app.get("/api/purchases/{purchase_id}")
+    def read_confirmed_purchase(purchase_id: str) -> JSONResponse:
+        purchase = read_purchase(settings, purchase_id)
+        if purchase is None:
+            return JSONResponse(
+                status_code=404,
+                content={"status": "not_found", "reason": "The confirmed purchase was not found."},
+            )
+        return JSONResponse(status_code=200, content=purchase.to_public_dict())
 
     @app.get("/api/receipts/{evidence_id}")
     def read_receipt(evidence_id: str) -> JSONResponse:
@@ -139,6 +198,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     return app
+
+
+def _reviewed_extraction(settings: Settings, record: ExtractionRecord) -> dict[str, object]:
+    payload = record.to_public_dict()
+    payload["confidence"] = assess_extraction(record)
+    existing = get_purchase_for_extraction(settings, record.extraction_id)
+    payload["confirmation_state"] = "confirmed" if existing else "unconfirmed"
+    payload["purchase_id"] = existing.purchase_id if existing else None
+    return payload
+
+
+def _confirmation_rejected(reason: str, status_code: int = 400) -> JSONResponse:
+    return JSONResponse(status_code=status_code, content={"status": "rejected", "reason": reason})
 
 
 def _rejected(reason: str, status_code: int = 400) -> JSONResponse:

@@ -12,8 +12,8 @@
       <p class="eyebrow">Purchase Intelligence</p>
       <h1>Receipt intake</h1>
       <p class="lede">
-        Preserve the original receipt image, then read that preserved evidence into an
-        unconfirmed extraction. The original image stays unchanged.
+        Preserve the original receipt image, review the unconfirmed extraction, and
+        confirm the purchase explicitly. The original image stays unchanged.
       </p>
 
       <form id="intake-form" class="panel" action="/api/receipts" method="post" enctype="multipart/form-data">
@@ -44,7 +44,21 @@
         </form>
       </section>
 
-      <p class="footnote">Original receipt bytes stay on this machine, separate from extracted candidates.</p>
+      <section class="panel confirmed-panel">
+        <h2>Confirmed purchase</h2>
+        <p class="hint">
+          A confirmed purchase is saved only after you choose Confirm purchase.
+          It stays separate from the unconfirmed extraction.
+        </p>
+        <form id="purchase-lookup">
+          <label for="purchase-id">Purchase ID</label>
+          <input id="purchase-id" name="purchase_id" type="text" autocomplete="off" spellcheck="false" maxlength="80">
+          <button id="show-purchase" type="submit">Show confirmed purchase</button>
+          <div id="purchase-lookup-result" class="result" role="status" aria-live="polite"></div>
+        </form>
+      </section>
+
+      <p class="footnote">Original receipt bytes stay on this machine, separate from extracted candidates and confirmed purchases.</p>
     </main>
     <script src="/static/app.js"></script>
   </body>

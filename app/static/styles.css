@@ -177,8 +177,64 @@ dd {
   font-size: 0.92rem;
 }
 
-.extract-panel {
+.extract-panel,
+.confirmed-panel {
   margin-top: 22px;
+}
+
+.review-form {
+  margin-top: 18px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.review-field {
+  margin-top: 12px;
+}
+
+.review-field label {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.review-field label > span {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.badge {
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.badge-low {
+  background: #f8e4e2;
+  color: var(--danger);
+}
+
+.badge-medium {
+  background: #f3ead2;
+  color: #6a5420;
+}
+
+.needs-review input {
+  border-color: #e3b2ad;
+  background: #fff7f6;
+}
+
+.check-field input {
+  border-color: #e4d3a8;
+}
+
+fieldset.line-card {
+  margin-top: 14px;
 }
 
 input[type="text"] {

@@ -159,19 +159,27 @@ def replace_extraction(settings: Settings, evidence_id: str, parsed: ParsedRecei
 
 
 def get_extraction(settings: Settings, evidence_id: str) -> ExtractionRecord | None:
+    return _load_extraction(settings, "evidence_id = ?", (evidence_id,))
+
+
+def get_extraction_by_id(settings: Settings, extraction_id: str) -> ExtractionRecord | None:
+    return _load_extraction(settings, "extraction_id = ?", (extraction_id,))
+
+
+def _load_extraction(settings: Settings, where_sql: str, params: tuple[str, ...]) -> ExtractionRecord | None:
     connection = _connect(settings)
     try:
         connection.row_factory = sqlite3.Row
         row = connection.execute(
-            """
+            f"""
             SELECT extraction_id, evidence_id, merchant_raw, merchant_normalized_candidate,
                    purchase_date_candidate, purchase_time_candidate, subtotal_candidate,
                    tax_candidate, total_candidate, raw_text, extraction_status,
                    failure_reason, created_at
             FROM receipt_extraction
-            WHERE evidence_id = ?
+            WHERE {where_sql}
             """,
-            (evidence_id,),
+            params,
         ).fetchone()
         if row is None:
             return None
