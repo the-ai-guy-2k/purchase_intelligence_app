@@ -1,6 +1,6 @@
 """Local text recognition. Replace this module to change OCR providers.
 
-The default recognizer uses the Windows OCR engine already on this machine.
+The recognizer uses Windows OCR on Windows and local Tesseract on Linux.
 It does not call a paid service and it does not write the receipt image.
 """
 
@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import asyncio
 import io
+import subprocess
+import sys
 
 from PIL import Image
 
@@ -25,6 +27,22 @@ async def recognize_lines(image_bytes: bytes) -> list[str]:
 
 
 def _recognize_sync(image_bytes: bytes) -> list[str]:
+    if sys.platform != "win32":
+        payload = _prepare_ocr_bytes(image_bytes)
+        try:
+            result = subprocess.run(
+                ["tesseract", "stdin", "stdout", "-l", "eng", "--psm", "6"],
+                input=payload,
+                capture_output=True,
+                timeout=30,
+                check=True,
+            )
+            return [
+                line.strip() for line in result.stdout.decode("utf-8").splitlines()
+                if line.strip()
+            ]
+        except (OSError, subprocess.SubprocessError, UnicodeError):
+            raise UnreadableReceipt(_OCR_FAILED) from None
     return asyncio.run(_recognize(image_bytes))
 
 

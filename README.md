@@ -6,7 +6,7 @@ ACI-001 preserves the original receipt image as evidence.
 
 ACI-002 reads that preserved evidence and stores an unconfirmed extraction candidate. The candidate can include a merchant, date, time, totals, and line items. Raw recognized text is kept beside any normalized text. Nothing here confirms a purchase, classifies items, or changes the original image.
 
-Extraction uses the Windows OCR engine already on this machine, behind a replaceable boundary. No paid OCR service is used.
+Extraction uses Windows OCR on Windows and local Tesseract on Linux, behind the same replaceable boundary. No paid OCR service is used. Recognition runs on an in-memory copy and does not rewrite evidence.
 
 Requesting extraction again for the same evidence ID replaces the previous unconfirmed extraction and its line candidates. One current extraction is kept for each evidence ID. The original receipt file and evidence record are not modified.
 
@@ -37,7 +37,105 @@ Open http://127.0.0.1:8000
 
 Receipt evidence is written under `data/receipt_evidence/`. Extraction candidates are written under `data/receipt_extraction/`. Confirmed purchases are written under `data/confirmed_purchases/`. Purchase history is written under `data/purchase_memory/`. Those directories are gitignored. Do not commit uploaded receipts, extractions, confirmed purchases, or purchase history.
 
-The default text recognizer requires Windows.
+### Replit / Linux
+
+Use Python 3.12 and install Tesseract (including English language data).
+The OCR tests also require DejaVu fonts and fontconfig. On Replit, these
+are installed as Nix packages `tesseract`, `dejavu_fonts`, and `fontconfig`.
+Install the existing `requirements-dev.txt` for validation or `requirements.txt`
+for runtime; WinRT dependencies are restricted to Windows.
+
+```sh
+python run.py
+```
+
+`run.py` starts the existing `app.main:app` with host `0.0.0.0`, using
+`PORT` when set and port 8000 otherwise. `PIA_DATA_DIR` can select an isolated
+evidence directory; sibling SQLite databases follow that directory as before.
+In this Replit project, the managed API artifact routes the whole application
+at `/` and supplies the port. The pnpm/Express template is not the application.
+
+In development on Replit, embedding is permitted only for the application's
+own origin and Replit preview origins. Outside Replit development the original
+frame-denial policy remains. Other security headers remain unchanged.
+
+Source recovery does not recover gitignored receipt files or purchase databases.
+Do not commit runtime data. No authentication or public publishing has been
+added by this continuation.
+
+## Ask history — ACI-007
+
+Open `/ask` for recent purchases, food, repeated items, merchants,
+needs/wants/consumables, recorded patterns, and cautious food availability recall.
+Starter buttons only fill the question. AI runs only after an explicit Ask.
+
+This uses the operator-approved `gpt-5-nano` through Replit AI Integrations,
+with the Python OpenAI SDK. Provision the managed integration in Replit; no
+separate provider account or user API key is required. Usage is billed at the
+provider's public API prices to Replit credits; it is not unlimited/included
+token usage. Managed access was verified through real requests in this project.
+The app uses `AI_INTEGRATIONS_OPENAI_BASE_URL` and
+`AI_INTEGRATIONS_OPENAI_API_KEY` on the server only. Never commit values.
+If integration access is unavailable, the existing app remains usable and Ask
+returns a clearly labelled deterministic fallback.
+
+`POST /api/ask` accepts only `{"question": "..."}` (maximum 500 characters).
+Results are derived, unpersisted, and never become purchase truth. The provider
+interface is replaceable; other modules do not choose a model.
+
+### Grounding, privacy, and limits
+
+- Deterministic routing selects relevant Memory and existing Analytics results.
+- The original question is not sent to AI. The provider receives a normalized
+  intent, minimal canonical facts, and eligible interpretations.
+- AI selects references; the server validates them and renders the original
+  canonical wording. It cannot accept arbitrary AI-generated names, counts,
+  dates, quantities, classifications, or inventory claims.
+- Recent recall means the latest five relevant remembered purchases, not a
+  freshness period. Undated records come last and retain unknown dates.
+- At most 24 context facts / 16 KiB; responses use at most 12 grounded facts.
+- Item and merchant selection does not introduce product-equivalence matching.
+  Walmart recall reuses the existing conservative merchant predicate without
+  changing analytics' merchant grouping.
+- Classification counts are remembered item records, not unique products.
+- Purchased quantities are not quantities remaining. Food may still be available;
+  consumption, expiration, remaining quantity, and current inventory are unknown.
+- No images, raw OCR, filesystem paths, database identifiers, secrets, or
+  unrelated line-item history are sent. Path/credential-like labels are excluded.
+- AI does not call the visual-recall builder or change enrichment associations.
+- One model request per supported, data-backed Ask; SDK retries are disabled.
+  There are no startup/load/refresh/background calls, conversation persistence,
+  or automatic shopping lists. Blank, unsupported, and insufficient/no-data
+  questions use deterministic handling without AI.
+- Timeout, failure, unavailable integration, and unusable output return visible,
+  deterministic fallback with supporting facts, not a fabricated interpretation.
+- The output token ceiling is 8192 (including reasoning), with minimal reasoning;
+  the actual structured selection is small. Provider timeout is 55 seconds and
+  the service caps the operation at 60 seconds.
+- Custom calendar windows, merchant-filtered repeat/pattern queries, expiry,
+  nutrition, forecasts, write requests, and arbitrary item-specific recall are
+  not supported. They are refused rather than silently dropping those constraints.
+
+### Additional live validation
+
+The existing 67-test regression is preserved. ACI-007 adds query, privacy,
+grounding, no-write, no-call, adapter, fallback, and input-boundary tests.
+
+For explicit live validation, use a **fresh isolated** `PIA_DATA_DIR` for the
+server and the same directory for the validator; never use personal data:
+
+```sh
+python -m tests.live_ai_validate --base-url http://localhost:80 \
+  --data-dir /tmp/pia-live/receipt_evidence --report /tmp/pia-live-report.json
+```
+
+This deliberately makes 12 real AI requests and creates three synthetic receipts
+through live intake, local OCR, review/correction/confirmation, and classification.
+It checks original bytes and unchanged database/evidence snapshots across queries.
+It refuses to seed a populated evidence directory. See `docs/ACI-007-VALIDATION.md`.
+
+The `/ask` page is additive. ACI-008 / final dashboard is not implemented.
+The operator's future direction is preserved in `docs/DASHBOARD-DIRECTION.md`.
 
 ## Checks
 

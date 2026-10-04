@@ -10,6 +10,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
+from app.ai_intelligence.provider import AIProvider, ReplitAIProvider
+from app.ai_intelligence.routing import QuestionRejected, parse_question
+from app.ai_intelligence.service import ask_history
 from app.config import STATIC_DIR, Settings, load_settings, size_limit_message
 from app.purchase_analytics.service import build_analytics
 from app.purchase_confirmation.confidence import assess_extraction
@@ -47,9 +50,13 @@ visual_logger = logging.getLogger("purchase_intelligence.visual_recall")
 _GENERIC_FAILURE = "The upload could not be processed."
 
 
-def create_app(settings: Settings | None = None, image_provider: object | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None, image_provider: object | None = None,
+    ai_provider: AIProvider | None = None,
+) -> FastAPI:
     settings = settings or load_settings()
     provider = default_provider() if image_provider is None else image_provider
+    intelligence_provider = ai_provider if ai_provider is not None else ReplitAIProvider()
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     settings.files_dir.mkdir(parents=True, exist_ok=True)
     init_db(settings.db_path)
@@ -69,11 +76,16 @@ def create_app(settings: Settings | None = None, image_provider: object | None =
     async def add_security_headers(request: Request, call_next):
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
+        if not settings.allow_preview_embedding:
+            response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "no-referrer"
+        frame_policy = (
+            "'self' https://replit.com https://*.replit.com https://*.replit.dev"
+            if settings.allow_preview_embedding else "'none'"
+        )
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; style-src 'self'; script-src 'self'; "
-            "img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'"
+            f"img-src 'self' data:; frame-ancestors {frame_policy}; base-uri 'none'"
         )
         response.headers["Cache-Control"] = "no-store"
         return response
@@ -217,6 +229,35 @@ def create_app(settings: Settings | None = None, image_provider: object | None =
     @app.get("/memory", response_class=HTMLResponse)
     def purchase_history() -> str:
         return (STATIC_DIR / "memory.html").read_text(encoding="utf-8")
+
+    @app.get("/ask", response_class=HTMLResponse)
+    def ask_page() -> str:
+        return (STATIC_DIR / "ask.html").read_text(encoding="utf-8")
+
+    @app.post("/api/ask")
+    async def ask_purchase_history(request: Request) -> JSONResponse:
+        if request.query_params or request.headers.get("content-type", "").split(";")[0] != "application/json":
+            return _rejected("Submit only a JSON question.")
+        raw = bytearray()
+        async for chunk in request.stream():
+            raw.extend(chunk)
+            if len(raw) > 4096:
+                return _rejected("The question request is too large.")
+        try:
+            question = parse_question(json.loads(raw))
+        except (json.JSONDecodeError, UnicodeError):
+            return _rejected("The question could not be read.")
+        except QuestionRejected as exc:
+            return _rejected(str(exc))
+        try:
+            result = await ask_history(settings, question, intelligence_provider)
+        except Exception:
+            # Preserve existing capabilities and avoid leaking questions/data/paths.
+            logging.getLogger("purchase_intelligence.ai").error("ai context unavailable")
+            return JSONResponse(status_code=503, content={
+                "status": "rejected", "reason": "Purchase history could not be read. Try again later.",
+            })
+        return JSONResponse(status_code=200, content=result.to_public_dict())
 
     @app.get("/analytics", response_class=HTMLResponse)
     def purchase_patterns() -> str:

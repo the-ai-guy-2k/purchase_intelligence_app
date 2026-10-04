@@ -22,6 +22,7 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 class Settings:
     data_dir: Path
     max_upload_bytes: int = MAX_UPLOAD_BYTES
+    allow_preview_embedding: bool = False
 
     @property
     def files_dir(self) -> Path:
@@ -55,7 +56,10 @@ class Settings:
 def load_settings() -> Settings:
     override = os.environ.get("PIA_DATA_DIR")
     data_dir = Path(override) if override else DEFAULT_DATA_DIR
-    return Settings(data_dir=data_dir)
+    return Settings(
+        data_dir=data_dir,
+        allow_preview_embedding=bool(os.environ.get("REPLIT_DEV_DOMAIN")),
+    )
 
 
 def size_limit_message(max_upload_bytes: int = MAX_UPLOAD_BYTES) -> str:

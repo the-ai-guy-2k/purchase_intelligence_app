@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import io
 import sqlite3
+import subprocess
+import sys
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -108,7 +110,13 @@ def test_parser_keeps_path_like_text_as_text():
 
 
 def receipt_png(lines: list[str]) -> bytes:
-    font = ImageFont.truetype(r"C:\Windows\Fonts\arialbd.ttf", 56)
+    font_path = (
+        r"C:\Windows\Fonts\arialbd.ttf" if sys.platform == "win32"
+        else subprocess.check_output(
+            ["fc-match", "-f", "%{file}", "DejaVu Sans:style=Bold"], timeout=5
+        ).decode("utf-8")
+    )
+    font = ImageFont.truetype(font_path, 56)
     width = 1200
     line_height = 90
     image = Image.new("RGB", (width, 140 + line_height * len(lines)), "white")
