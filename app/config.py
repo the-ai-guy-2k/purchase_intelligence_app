@@ -40,6 +40,10 @@ class Settings:
         return self.data_dir.parent / "confirmed_purchases" / "confirmed.sqlite"
 
     @property
+    def memory_db_path(self) -> Path:
+        return self.data_dir.parent / "purchase_memory" / "memory.sqlite"
+
+    @property
     def max_upload_megabytes(self) -> int:
         return self.max_upload_bytes // (1024 * 1024)
 

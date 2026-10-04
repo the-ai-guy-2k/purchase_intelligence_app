@@ -12,6 +12,15 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import STATIC_DIR, Settings, load_settings, size_limit_message
 from app.purchase_confirmation.confidence import assess_extraction
+from app.purchase_memory.errors import MemoryNotFound, MemoryRejected, PurchaseNotFound
+from app.purchase_memory.repository import init_memory_db
+from app.purchase_memory.service import (
+    correct_classification,
+    read_memory,
+    read_memory_list,
+    remember_from_request,
+    remember_purchase,
+)
 from app.purchase_confirmation.errors import AlreadyConfirmed, ConfirmationRejected, ExtractionNotFound
 from app.purchase_confirmation.repository import get_purchase_for_extraction, init_confirmed_db
 from app.purchase_confirmation.service import confirm_purchase, read_purchase
@@ -28,6 +37,7 @@ from app.receipt_intake.validation import declared_body_too_large, read_limited_
 logger = logging.getLogger("purchase_intelligence.receipt_intake")
 extraction_logger = logging.getLogger("purchase_intelligence.receipt_extraction")
 confirmation_logger = logging.getLogger("purchase_intelligence.confirmation")
+memory_logger = logging.getLogger("purchase_intelligence.memory")
 
 _GENERIC_FAILURE = "The upload could not be processed."
 
@@ -39,6 +49,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     init_db(settings.db_path)
     init_extraction_db(settings)
     init_confirmed_db(settings)
+    init_memory_db(settings)
 
     app = FastAPI(
         title="Purchase Intelligence",
@@ -174,7 +185,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             purchase.evidence_id,
             len(purchase.items),
         )
-        return JSONResponse(status_code=201, content=purchase.to_public_dict())
+        try:
+            memory, _created = remember_purchase(settings, purchase.purchase_id)
+        except Exception:
+            confirmation_logger.exception("purchase history was not saved")
+            return _confirmation_rejected(
+                "The purchase was confirmed, but purchase history could not be saved.",
+                status_code=500,
+            )
+        payload = purchase.to_public_dict()
+        payload["memory_id"] = memory.memory_id
+        return JSONResponse(status_code=201, content=payload)
 
     @app.get("/api/purchases/{purchase_id}")
     def read_confirmed_purchase(purchase_id: str) -> JSONResponse:
@@ -185,6 +206,86 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 content={"status": "not_found", "reason": "The confirmed purchase was not found."},
             )
         return JSONResponse(status_code=200, content=purchase.to_public_dict())
+
+    @app.get("/memory", response_class=HTMLResponse)
+    def purchase_history() -> str:
+        return (STATIC_DIR / "memory.html").read_text(encoding="utf-8")
+
+    @app.post("/api/memory")
+    async def remember_confirmed_purchase(request: Request) -> JSONResponse:
+        try:
+            payload = await request.json()
+        except json.JSONDecodeError:
+            return _memory_rejected("The memory request could not be read.")
+        try:
+            memory, created = remember_from_request(settings, payload)
+        except PurchaseNotFound:
+            memory_logger.info("memory rejected reason=purchase_not_found")
+            return JSONResponse(
+                status_code=404,
+                content={"status": "not_found", "reason": "The confirmed purchase was not found."},
+            )
+        except MemoryRejected as exc:
+            memory_logger.info("memory rejected")
+            return _memory_rejected(exc.reason)
+        except Exception:
+            memory_logger.exception("memory creation failed")
+            return _memory_rejected("The purchase could not be remembered.", status_code=500)
+        memory_logger.info(
+            "memory %s memory_id=%s purchase_id=%s item_count=%s",
+            "created" if created else "reused",
+            memory.memory_id,
+            memory.purchase_id,
+            len(memory.items),
+        )
+        return JSONResponse(status_code=201 if created else 200, content=memory.to_public_dict())
+
+    @app.get("/api/memory")
+    def list_purchase_history(filter: str | None = None) -> JSONResponse:
+        try:
+            entries = read_memory_list(settings, filter)
+        except MemoryRejected as exc:
+            return _memory_rejected(exc.reason)
+        return JSONResponse(
+            status_code=200,
+            content={"status": "ok", "purchases": [entry.to_summary_dict() for entry in entries]},
+        )
+
+    @app.get("/api/memory/{memory_id}")
+    def read_remembered_purchase(memory_id: str) -> JSONResponse:
+        memory = read_memory(settings, memory_id)
+        if memory is None:
+            return JSONResponse(
+                status_code=404,
+                content={"status": "not_found", "reason": "The remembered purchase was not found."},
+            )
+        return JSONResponse(status_code=200, content=memory.to_public_dict())
+
+    @app.patch("/api/memory/{memory_id}/items/{memory_item_id}")
+    async def correct_item_classification(
+        memory_id: str,
+        memory_item_id: str,
+        request: Request,
+    ) -> JSONResponse:
+        try:
+            payload = await request.json()
+        except json.JSONDecodeError:
+            return _memory_rejected("The classification could not be read.")
+        try:
+            memory = correct_classification(settings, memory_id, memory_item_id, payload)
+        except MemoryNotFound:
+            memory_logger.info("classification rejected reason=memory_not_found")
+            return JSONResponse(
+                status_code=404,
+                content={"status": "not_found", "reason": "The remembered purchase was not found."},
+            )
+        except MemoryRejected as exc:
+            memory_logger.info("classification rejected")
+            return _memory_rejected(exc.reason)
+        except Exception:
+            memory_logger.exception("classification update failed")
+            return _memory_rejected("The classification could not be saved.", status_code=500)
+        return JSONResponse(status_code=200, content=memory.to_public_dict())
 
     @app.get("/api/receipts/{evidence_id}")
     def read_receipt(evidence_id: str) -> JSONResponse:
@@ -207,6 +308,10 @@ def _reviewed_extraction(settings: Settings, record: ExtractionRecord) -> dict[s
     payload["confirmation_state"] = "confirmed" if existing else "unconfirmed"
     payload["purchase_id"] = existing.purchase_id if existing else None
     return payload
+
+
+def _memory_rejected(reason: str, status_code: int = 400) -> JSONResponse:
+    return JSONResponse(status_code=status_code, content={"status": "rejected", "reason": reason})
 
 
 def _confirmation_rejected(reason: str, status_code: int = 400) -> JSONResponse:

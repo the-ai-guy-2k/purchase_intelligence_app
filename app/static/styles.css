@@ -278,6 +278,53 @@ input[type="text"] {
   border: 1px solid var(--line);
 }
 
+.nav {
+  margin: 0 0 18px;
+}
+
+.nav a,
+.filters a {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin: 0 0 22px;
+}
+
+.memory-list {
+  display: grid;
+  gap: 12px;
+}
+
+.memory-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: #fff;
+}
+
+.classification-grid {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+select {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
+
 @media (max-width: 640px) {
   .wrap {
     width: min(720px, calc(100% - 28px));

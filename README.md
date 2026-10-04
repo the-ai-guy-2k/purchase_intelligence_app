@@ -14,6 +14,10 @@ ACI-003 adds review, correction, and explicit confirmation. Confidence is a dete
 
 Confirm purchase is the only action that creates a confirmed purchase. One extraction has one confirmed purchase. Confirming that extraction again is rejected, and the confirmed record is read-only. The raw extraction text and the original receipt are not rewritten. Each confirmed item keeps the source line id and the raw line text.
 
+ACI-004 remembers a confirmed purchase. Purchase history is created only from that confirmed record, one memory record per purchase. Remembering the same purchase again reuses the existing record and does not change classifications. The confirmed purchase and the original receipt stay unchanged.
+
+Classification is conservative and local. Obvious item words can be marked food or non-food, and consumable or long-term. Need versus want stays unknown until you set it. An unrecognized item stays unknown. You can correct any of the three labels. Purchase history shows what was purchased. It does not claim those items are still in the household.
+
 ## Run
 
 Requires Python 3.12.
@@ -27,7 +31,7 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 Open http://127.0.0.1:8000
 
-Receipt evidence is written under `data/receipt_evidence/`. Extraction candidates are written under `data/receipt_extraction/`. Confirmed purchases are written under `data/confirmed_purchases/`. Those directories are gitignored. Do not commit uploaded receipts, extractions, or confirmed purchases.
+Receipt evidence is written under `data/receipt_evidence/`. Extraction candidates are written under `data/receipt_extraction/`. Confirmed purchases are written under `data/confirmed_purchases/`. Purchase history is written under `data/purchase_memory/`. Those directories are gitignored. Do not commit uploaded receipts, extractions, confirmed purchases, or purchase history.
 
 The default text recognizer requires Windows.
 

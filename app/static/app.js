@@ -377,6 +377,12 @@ async function submitConfirmation(form, payload) {
       }
       showConfirmedPurchase(confirmed, result);
       purchaseIdInput.value = result.purchase_id;
+      if (result.memory_id) {
+        const history = document.createElement("a");
+        history.href = `/memory#${result.memory_id}`;
+        history.textContent = "View remembered purchase";
+        confirmed.appendChild(history);
+      }
       form.querySelectorAll("input").forEach((input) => {
         input.disabled = true;
       });
