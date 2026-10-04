@@ -18,6 +18,8 @@ ACI-004 remembers a confirmed purchase. Purchase history is created only from th
 
 Classification is conservative and local. Obvious item words can be marked food or non-food, and consumable or long-term. Need versus want stays unknown until you set it. An unrecognized item stays unknown. You can correct any of the three labels. Purchase history shows what was purchased. It does not claim those items are still in the household.
 
+ACI-005 calculates purchase patterns from purchase history when the patterns page is opened. Nothing is stored as a second copy of the purchases. Item comparison trims surrounding space, collapses inner space, and casefolds the name. Different words stay different items. A repeat is the same comparison key on more than one remembered purchase. An interval is calculated only when at least two of those purchases have dates. Missing quantities and dates stay missing. Changing a classification changes the next count. Opening the patterns page does not change purchase history.
+
 ## Run
 
 Requires Python 3.12.

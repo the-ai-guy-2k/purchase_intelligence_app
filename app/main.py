@@ -11,6 +11,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import STATIC_DIR, Settings, load_settings, size_limit_message
+from app.purchase_analytics.service import build_analytics
 from app.purchase_confirmation.confidence import assess_extraction
 from app.purchase_memory.errors import MemoryNotFound, MemoryRejected, PurchaseNotFound
 from app.purchase_memory.repository import init_memory_db
@@ -38,6 +39,7 @@ logger = logging.getLogger("purchase_intelligence.receipt_intake")
 extraction_logger = logging.getLogger("purchase_intelligence.receipt_extraction")
 confirmation_logger = logging.getLogger("purchase_intelligence.confirmation")
 memory_logger = logging.getLogger("purchase_intelligence.memory")
+analytics_logger = logging.getLogger("purchase_intelligence.analytics")
 
 _GENERIC_FAILURE = "The upload could not be processed."
 
@@ -211,6 +213,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def purchase_history() -> str:
         return (STATIC_DIR / "memory.html").read_text(encoding="utf-8")
 
+    @app.get("/analytics", response_class=HTMLResponse)
+    def purchase_patterns() -> str:
+        return (STATIC_DIR / "analytics.html").read_text(encoding="utf-8")
+
+    @app.get("/api/analytics")
+    def read_purchase_analytics(request: Request) -> JSONResponse:
+        if request.query_params:
+            return _analytics_rejected("That analytics request is not supported.")
+        report = build_analytics(settings)
+        summary = report["summary"]
+        analytics_logger.info(
+            "analytics calculated purchases=%s items=%s",
+            summary["remembered_purchases"],
+            summary["remembered_items"],
+        )
+        return JSONResponse(status_code=200, content=report)
+
     @app.post("/api/memory")
     async def remember_confirmed_purchase(request: Request) -> JSONResponse:
         try:
@@ -308,6 +327,10 @@ def _reviewed_extraction(settings: Settings, record: ExtractionRecord) -> dict[s
     payload["confirmation_state"] = "confirmed" if existing else "unconfirmed"
     payload["purchase_id"] = existing.purchase_id if existing else None
     return payload
+
+
+def _analytics_rejected(reason: str, status_code: int = 400) -> JSONResponse:
+    return JSONResponse(status_code=status_code, content={"status": "rejected", "reason": reason})
 
 
 def _memory_rejected(reason: str, status_code: int = 400) -> JSONResponse:

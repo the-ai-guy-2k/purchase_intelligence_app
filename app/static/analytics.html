@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Purchase Intelligence — Purchase patterns</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <main class="wrap">
+      <p class="eyebrow">Purchase Intelligence</p>
+      <p class="nav"><a href="/">Receipt intake</a> <a href="/memory">Purchase history</a></p>
+      <h1>Purchase patterns</h1>
+      <p class="lede">
+        These counts are calculated from remembered purchases. They describe what
+        was purchased. They do not predict a later purchase, and they do not show
+        what is still in the household.
+      </p>
+      <div id="analytics-status" class="result" role="status" aria-live="polite"></div>
+      <section id="summary-section" hidden>
+        <h2>Summary</h2>
+        <div id="summary-grid" class="stat-grid"></div>
+      </section>
+      <section id="repeat-section" hidden>
+        <h2>Items</h2>
+        <div id="repeat-list" class="pattern-list"></div>
+      </section>
+      <section id="merchant-section" hidden>
+        <h2>Merchants</h2>
+        <div id="merchant-list" class="pattern-list"></div>
+      </section>
+      <section id="classification-section" hidden>
+        <h2>Classifications</h2>
+        <div id="classification-list" class="stat-grid"></div>
+      </section>
+    </main>
+    <script src="/static/analytics.js"></script>
+  </body>
+</html>

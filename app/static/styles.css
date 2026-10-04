@@ -295,9 +295,30 @@ input[type="text"] {
   margin: 0 0 22px;
 }
 
-.memory-list {
+.memory-list,
+.pattern-list {
   display: grid;
   gap: 12px;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.stat-grid article {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.stat-grid strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 1.4rem;
 }
 
 .memory-card {
