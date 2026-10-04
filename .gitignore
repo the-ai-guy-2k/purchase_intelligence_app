@@ -8,6 +8,7 @@ __pycache__/
 
 # Original receipt evidence is local runtime data and must never be committed.
 data/
+demo_data/
 *.sqlite
 *.sqlite3
 *.partial

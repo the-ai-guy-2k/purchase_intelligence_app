@@ -1,0 +1,10 @@
+.demo-banner {
+  margin: 0 0 24px;
+  padding: 16px 20px;
+  border: 1px solid #b7a56e;
+  border-radius: 16px;
+  background: #faf3dc;
+  color: #303b33;
+}
+.demo-banner strong { font-size: 15px; letter-spacing: .04em; }
+.demo-banner p { margin: 8px 0 0; font-size: 13px; line-height: 1.5; }

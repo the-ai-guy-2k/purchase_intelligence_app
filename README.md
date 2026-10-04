@@ -2,6 +2,38 @@
 
 Local web application for understanding purchases over time.
 
+## Explicit synthetic operator demo
+
+From this product directory run `python run_demo.py`. From the Replit workspace
+root use `python artifacts/api-server/purchase_intelligence_app/run_demo.py`.
+The managed development preview may explicitly select this command. Open `/`;
+all existing pages and navigation are unchanged.
+
+Every HTML page displays **DEMO DATA**. The demo is read-only, personal uploads
+are disabled, and Ask AI uses the existing `RecordingProvider` test adapter:
+grounded fixture answers, not a live model. No real AI calls occur.
+
+Normal data stays separate. Demo-only SQLite databases and original synthetic
+receipt images live in `demo_data/`, which is ignored by Git. No personal data
+or normal-runtime database is copied into it.
+
+Fixture fields come directly from the existing ACI-005 repeat-history and
+ACI-006 Walmart recall tests. The existing receipt-image renderer and parser
+produce corresponding synthetic evidence/extraction; purchases are confirmed
+through the normal confirmation endpoint, not inserted as fabricated rows.
+Existing ACI-004/008 classification corrections supply Want/Need examples.
+
+To reset, stop the demo and run `python run_demo.py --reset`; only the marked,
+owned demo directory is regenerated. Never delete normal storage or run manual
+SQL cleanup. To exit, stop the demo and use the original `python run.py`
+command (managed preview: `python purchase_intelligence_app/run.py`).
+Restarts reuse existing demo storage without duplicating purchases.
+
+This is an operator/development tool using the already-listed
+`requirements-dev.txt` dependencies. Published startup remains `run.py`, which
+does not import, initialize, seed, or serve the demo. This demo does not resolve
+the separate production-persistence approval requirement.
+
 ACI-001 preserves the original receipt image as evidence.
 
 ACI-002 reads that preserved evidence and stores an unconfirmed extraction candidate. The candidate can include a merchant, date, time, totals, and line items. Raw recognized text is kept beside any normalized text. Nothing here confirms a purchase, classifies items, or changes the original image.
