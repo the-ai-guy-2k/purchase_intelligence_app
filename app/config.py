@@ -44,6 +44,10 @@ class Settings:
         return self.data_dir.parent / "purchase_memory" / "memory.sqlite"
 
     @property
+    def visual_db_path(self) -> Path:
+        return self.data_dir.parent / "visual_recall" / "visual.sqlite"
+
+    @property
     def max_upload_megabytes(self) -> int:
         return self.max_upload_bytes // (1024 * 1024)
 

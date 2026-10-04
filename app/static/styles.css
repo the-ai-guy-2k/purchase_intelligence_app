@@ -321,6 +321,16 @@ input[type="text"] {
   font-size: 1.4rem;
 }
 
+.recall-card img {
+  display: block;
+  width: 120px;
+  height: 120px;
+  margin: 8px 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+
 .memory-card {
   display: block;
   width: 100%;

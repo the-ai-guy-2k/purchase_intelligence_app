@@ -20,6 +20,8 @@ Classification is conservative and local. Obvious item words can be marked food 
 
 ACI-005 calculates purchase patterns from purchase history when the patterns page is opened. Nothing is stored as a second copy of the purchases. Item comparison trims surrounding space, collapses inner space, and casefolds the name. Different words stay different items. A repeat is the same comparison key on more than one remembered purchase. An interval is calculated only when at least two of those purchases have dates. Missing quantities and dates stay missing. Changing a classification changes the next count. Opening the patterns page does not change purchase history.
 
+ACI-006 adds pictures for food purchased at Walmart. The merchant must be Walmart, Walmart followed by a store type, or Wal-Mart. The item must already be classified as food. Other merchants and other classifications are skipped. Pictures come from a replaceable local catalog of original illustrations. A generic food such as milk or bananas is labeled Representative image. An exact label is used only when the full item name is an explicit catalog identity. If no trustworthy picture exists, the item stays text-only. Opening food recall does not change the confirmed purchase or purchase history. A picture does not mean the food is still in the household.
+
 ## Run
 
 Requires Python 3.12.

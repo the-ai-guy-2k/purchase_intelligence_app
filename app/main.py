@@ -7,7 +7,7 @@ import logging
 
 from fastapi import FastAPI, File, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.config import STATIC_DIR, Settings, load_settings, size_limit_message
@@ -34,24 +34,29 @@ from app.receipt_intake.models import parse_evidence_id
 from app.receipt_intake.repository import get_evidence, init_db
 from app.receipt_intake.service import preserve_upload
 from app.receipt_intake.validation import declared_body_too_large, read_limited_upload
+from app.visual_recall.repository import init_visual_db
+from app.visual_recall.service import build_visual_recall, default_provider, read_enrichment_image
 
 logger = logging.getLogger("purchase_intelligence.receipt_intake")
 extraction_logger = logging.getLogger("purchase_intelligence.receipt_extraction")
 confirmation_logger = logging.getLogger("purchase_intelligence.confirmation")
 memory_logger = logging.getLogger("purchase_intelligence.memory")
 analytics_logger = logging.getLogger("purchase_intelligence.analytics")
+visual_logger = logging.getLogger("purchase_intelligence.visual_recall")
 
 _GENERIC_FAILURE = "The upload could not be processed."
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(settings: Settings | None = None, image_provider: object | None = None) -> FastAPI:
     settings = settings or load_settings()
+    provider = default_provider() if image_provider is None else image_provider
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     settings.files_dir.mkdir(parents=True, exist_ok=True)
     init_db(settings.db_path)
     init_extraction_db(settings)
     init_confirmed_db(settings)
     init_memory_db(settings)
+    init_visual_db(settings)
 
     app = FastAPI(
         title="Purchase Intelligence",
@@ -230,6 +235,32 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         return JSONResponse(status_code=200, content=report)
 
+    @app.get("/food-recall", response_class=HTMLResponse)
+    def food_recall() -> str:
+        return (STATIC_DIR / "food-recall.html").read_text(encoding="utf-8")
+
+    @app.get("/api/visual-recall")
+    def read_visual_recall(view: str | None = None) -> JSONResponse:
+        try:
+            report = build_visual_recall(settings, provider, view)
+        except ValueError:
+            return _visual_rejected("That food recall view is not supported.")
+        except Exception:
+            visual_logger.exception("visual recall failed")
+            return _visual_rejected("Food recall could not be loaded.", status_code=500)
+        visual_logger.info("visual recall items=%s", len(report["items"]))
+        return JSONResponse(status_code=200, content=report)
+
+    @app.get("/api/visual-recall/enrichments/{enrichment_id}/image")
+    def read_visual_image(enrichment_id: str) -> Response:
+        content = read_enrichment_image(settings, provider, enrichment_id)
+        if content is None:
+            return JSONResponse(
+                status_code=404,
+                content={"status": "not_found", "reason": "The food image was not found."},
+            )
+        return Response(content=content, media_type="image/svg+xml")
+
     @app.post("/api/memory")
     async def remember_confirmed_purchase(request: Request) -> JSONResponse:
         try:
@@ -327,6 +358,10 @@ def _reviewed_extraction(settings: Settings, record: ExtractionRecord) -> dict[s
     payload["confirmation_state"] = "confirmed" if existing else "unconfirmed"
     payload["purchase_id"] = existing.purchase_id if existing else None
     return payload
+
+
+def _visual_rejected(reason: str, status_code: int = 400) -> JSONResponse:
+    return JSONResponse(status_code=status_code, content={"status": "rejected", "reason": reason})
 
 
 def _analytics_rejected(reason: str, status_code: int = 400) -> JSONResponse:
