@@ -9,14 +9,14 @@
     <link rel="stylesheet" href="/static/ask.css">
   </head>
   <body>
-    <main class="wrap ask-wrap">
-      <p class="eyebrow">Purchase Intelligence</p>
-      <p class="nav"><a href="/">Receipt intake</a> <a href="/memory">Purchase history</a> <a href="/analytics">Purchase patterns</a> <a href="/food-recall">Food you purchased</a></p>
-      <h1>Ask your purchase history</h1>
-      <p class="lede">
-        Recall what appears in confirmed purchases. Answers are grounded in remembered
-        evidence—not a live view of what is in your home.
-      </p>
+    <div class="app-shell">
+      __NAV__
+      <main id="main-content" class="app-main ask-wrap">
+      <header class="page-heading"><div>
+        <p class="eyebrow">Grounded in your records</p>
+        <h1>Ask your purchase history</h1>
+        <p class="lede">Recall what appears in confirmed purchases. Answers are grounded in remembered evidence—not a live view of what is in your home.</p>
+      </div></header>
 
       <section class="panel ask-panel" aria-labelledby="question-heading">
         <h2 id="question-heading">What are you trying to remember?</h2>
@@ -66,7 +66,8 @@
           </section>
         </article>
       </section>
-    </main>
+      </main>
+    </div>
     <script src="/static/ask.js"></script>
   </body>
 </html>

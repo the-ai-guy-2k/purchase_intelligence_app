@@ -224,8 +224,8 @@ def test_evidence_is_not_served_as_a_static_file(client: TestClient):
     assert client.get("/data/receipt_evidence/files/" + Path(reference).name).status_code == 404
 
 
-def test_homepage_is_desktop_intake_form(client: TestClient):
-    response = client.get("/")
+def test_intake_page_preserves_desktop_intake_form(client: TestClient):
+    response = client.get("/intake")
 
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]

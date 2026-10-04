@@ -286,7 +286,7 @@ def test_unrelated_evidence_and_extraction_are_rejected(client: TestClient, sett
 
 
 def test_review_page_offers_explicit_confirmation(client: TestClient):
-    page = client.get("/")
+    page = client.get("/intake")
     script = client.get("/static/app.js")
 
     assert "Confirm purchase" in page.text

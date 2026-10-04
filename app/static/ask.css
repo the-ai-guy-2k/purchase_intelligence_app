@@ -1,5 +1,5 @@
 .ask-wrap {
-  width: min(840px, calc(100% - 48px));
+  width: auto;
 }
 
 .ask-panel {
@@ -19,7 +19,7 @@
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 12px 14px;
-  background: #fff;
+  background: var(--card);
   color: var(--ink);
   font: inherit;
   line-height: 1.5;
@@ -72,7 +72,7 @@
   margin: 0;
   border: 1px solid var(--line);
   padding: 8px 12px;
-  background: #f7f4ee;
+  background: var(--card-muted);
   color: var(--ink);
   font-size: 0.92rem;
   font-weight: 500;
@@ -194,7 +194,7 @@
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 12px 14px;
-  background: #fff;
+  background: var(--card);
   overflow-wrap: anywhere;
 }
 
@@ -223,7 +223,7 @@
 
 @media (max-width: 640px) {
   .ask-wrap {
-    width: min(720px, calc(100% - 28px));
+    width: 100%;
   }
 
   .ask-input-meta {

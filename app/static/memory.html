@@ -8,14 +8,14 @@
     <link rel="stylesheet" href="/static/styles.css">
   </head>
   <body>
-    <main class="wrap">
-      <p class="eyebrow">Purchase Intelligence</p>
-      <p class="nav"><a href="/">Receipt intake</a> <a href="/analytics">Purchase patterns</a> <a href="/food-recall">Food you purchased</a> <a href="/ask">Ask history</a></p>
-      <h1>Purchase history</h1>
-      <p class="lede">
-        Remembered purchases are items that were bought. This page records purchase
-        history. It does not show what is still in the household.
-      </p>
+    <div class="app-shell">
+      __NAV__
+      <main id="main-content" class="app-main">
+      <header class="page-heading"><div>
+        <p class="eyebrow">Your confirmed records</p>
+        <h1>Purchase history</h1>
+        <p class="lede">A record of items you bought, not a view of what is still in your home.</p>
+      </div><a class="button-link button-secondary" href="/intake">Upload receipt</a></header>
       <nav class="filters" aria-label="Purchase history filters">
         <a href="/memory">All purchases</a>
         <a href="/memory?filter=food">Food</a>
@@ -31,7 +31,8 @@
         <div id="memory-summary"></div>
         <div id="memory-items" class="line-list"></div>
       </section>
-    </main>
+      </main>
+    </div>
     <script src="/static/memory.js"></script>
   </body>
 </html>

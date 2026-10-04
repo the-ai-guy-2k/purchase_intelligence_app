@@ -8,15 +8,14 @@
     <link rel="stylesheet" href="/static/styles.css">
   </head>
   <body>
-    <main class="wrap">
-      <p class="eyebrow">Purchase Intelligence</p>
-      <p class="nav"><a href="/">Receipt intake</a> <a href="/memory">Purchase history</a> <a href="/food-recall">Food you purchased</a> <a href="/ask">Ask history</a></p>
-      <h1>Purchase patterns</h1>
-      <p class="lede">
-        These counts are calculated from remembered purchases. They describe what
-        was purchased. They do not predict a later purchase, and they do not show
-        what is still in the household.
-      </p>
+    <div class="app-shell">
+      __NAV__
+      <main id="main-content" class="app-main">
+      <header class="page-heading"><div>
+        <p class="eyebrow">Deterministic patterns</p>
+        <h1>Purchase patterns</h1>
+        <p class="lede">Counts describe confirmed purchase history. They are not predictions and do not show what is still in the household.</p>
+      </div><a class="button-link button-secondary" href="/ask">Ask AI about your history</a></header>
       <div id="analytics-status" class="result" role="status" aria-live="polite"></div>
       <section id="summary-section" hidden>
         <h2>Summary</h2>
@@ -34,7 +33,8 @@
         <h2>Classifications</h2>
         <div id="classification-list" class="stat-grid"></div>
       </section>
-    </main>
+      </main>
+    </div>
     <script src="/static/analytics.js"></script>
   </body>
 </html>

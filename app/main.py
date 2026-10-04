@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+from importlib.util import find_spec
 
 from fastapi import FastAPI, File, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
@@ -96,10 +98,41 @@ def create_app(
             "The upload could not be processed. Choose a receipt image and try again."
         )
 
+    def page(filename: str, active: str) -> str:
+        """Reuse one navigation fragment without a template/build dependency."""
+        navigation = (STATIC_DIR / "nav.html").read_text(encoding="utf-8")
+        for section in ("overview", "memory", "analytics", "food", "ask", "intake"):
+            navigation = navigation.replace(
+                f"__ACTIVE_{section.upper()}__",
+                'aria-current="page"' if section == active else "",
+            )
+        template = (STATIC_DIR / filename).read_text(encoding="utf-8")
+        return template.replace("__NAV__", navigation).replace(
+            "__MAX_MB__", str(settings.max_upload_megabytes),
+        )
+
     @app.get("/", response_class=HTMLResponse)
-    def index() -> str:
-        template = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
-        return template.replace("__MAX_MB__", str(settings.max_upload_megabytes))
+    def overview() -> str:
+        return page("overview.html", "overview")
+
+    @app.get("/intake", response_class=HTMLResponse)
+    def receipt_intake_page() -> str:
+        return page("index.html", "intake")
+
+    @app.get("/api/ai-status")
+    def ai_capability_status() -> JSONResponse:
+        # Configuration only: no model request, key exposure or health promise.
+        configured = (
+            bool(os.environ.get("AI_INTEGRATIONS_OPENAI_BASE_URL"))
+            and bool(os.environ.get("AI_INTEGRATIONS_OPENAI_API_KEY"))
+            and find_spec("openai") is not None
+        )
+        return JSONResponse(content={
+            "status": "configured" if configured else "unavailable",
+            "provider": intelligence_provider.name,
+            "model": intelligence_provider.model,
+            "health_verified": False,
+        })
 
     @app.post("/api/receipts")
     async def intake_receipt(
@@ -228,11 +261,11 @@ def create_app(
 
     @app.get("/memory", response_class=HTMLResponse)
     def purchase_history() -> str:
-        return (STATIC_DIR / "memory.html").read_text(encoding="utf-8")
+        return page("memory.html", "memory")
 
     @app.get("/ask", response_class=HTMLResponse)
     def ask_page() -> str:
-        return (STATIC_DIR / "ask.html").read_text(encoding="utf-8")
+        return page("ask.html", "ask")
 
     @app.post("/api/ask")
     async def ask_purchase_history(request: Request) -> JSONResponse:
@@ -261,7 +294,7 @@ def create_app(
 
     @app.get("/analytics", response_class=HTMLResponse)
     def purchase_patterns() -> str:
-        return (STATIC_DIR / "analytics.html").read_text(encoding="utf-8")
+        return page("analytics.html", "analytics")
 
     @app.get("/api/analytics")
     def read_purchase_analytics(request: Request) -> JSONResponse:
@@ -278,7 +311,7 @@ def create_app(
 
     @app.get("/food-recall", response_class=HTMLResponse)
     def food_recall() -> str:
-        return (STATIC_DIR / "food-recall.html").read_text(encoding="utf-8")
+        return page("food-recall.html", "food")
 
     @app.get("/api/visual-recall")
     def read_visual_recall(view: str | None = None) -> JSONResponse:

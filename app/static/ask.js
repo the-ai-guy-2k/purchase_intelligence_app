@@ -112,6 +112,12 @@
     setText(counter, `${questionInput.value.length} / 500`);
   }
 
+  const initialQuestion = new URLSearchParams(window.location.search).get("question");
+  if (initialQuestion) {
+    questionInput.value = initialQuestion.slice(0, 500);
+    updateCounter();
+  }
+
   questionInput.addEventListener("input", updateCounter);
 
   starterButtons.forEach((button) => {

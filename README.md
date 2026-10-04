@@ -134,8 +134,46 @@ through live intake, local OCR, review/correction/confirmation, and classificati
 It checks original bytes and unchanged database/evidence snapshots across queries.
 It refuses to seed a populated evidence directory. See `docs/ACI-007-VALIDATION.md`.
 
-The `/ask` page is additive. ACI-008 / final dashboard is not implemented.
-The operator's future direction is preserved in `docs/DASHBOARD-DIRECTION.md`.
+## Desktop dashboard — ACI-008
+
+The default `/` page is Overview. One shared left navigation connects Overview,
+Purchase History (`/memory`), Patterns (`/analytics`), Food Recall (`/food-recall`),
+and Ask AI (`/ask`). Upload receipt opens the original intake/review/confirmation
+workflow at `/intake`; no intake API or evidence semantics changed.
+
+Overview reads the existing Memory, deterministic Analytics, and visual-recall
+APIs independently. It shows confirmed remembered purchases, repeating item
+identities, current food classifications, recent history, observed repeat
+intervals, merchant counts, Need/Want/Unknown counts, and a small Walmart food
+preview. Native HTML meters display zero-based occurrence counts; there is no
+chart library or frontend analytics reimplementation. Receipt totals are absent
+from Memory, so Overview never constructs spending totals from line items.
+
+`GET /api/ai-status` exposes configuration presence and the selected provider/model,
+never credentials. It performs no model request and explicitly does not verify
+service health. Overview starter links and its compact question form open
+`/ask?question=...` and prefill at most 500 characters. The user must still click
+Ask; ACI-007 routing, privacy, grounding, fallback and no-write rules are unchanged.
+
+Shared CSS supplies the operator-approved warm-white/green visual direction,
+desktop navigation, practical smaller-screen collapse, visible keyboard focus,
+labels, skip links and image alt text. Optional status/enrichment failures do not
+block remembered purchases or patterns. Empty history shows real zero counts
+and useful guidance, never demo data.
+
+See `docs/DASHBOARD-DIRECTION.md` and `docs/ACI-008-VALIDATION.md`.
+For bounded fixture preparation, use a fresh isolated server storage directory:
+
+```sh
+python -m tests.live_mvp_validate --base-url http://localhost:80 \
+  --data-dir /tmp/pia-mvp/receipt_evidence \
+  --browser-image /tmp/pia-mvp-receipt.png --report /tmp/pia-mvp-prepare.json
+```
+
+This prepares two synthetic receipts through real local OCR and makes **zero**
+model calls. Complete browser integration validation with no more than two
+explicit real queries when AI logic is unchanged. The older 12-query ACI-007
+validator above is not the normal dashboard validation path.
 
 ## Checks
 

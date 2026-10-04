@@ -8,14 +8,16 @@
     <link rel="stylesheet" href="/static/styles.css">
   </head>
   <body>
-    <main class="wrap">
-      <p class="eyebrow">Purchase Intelligence</p>
-      <p class="nav"><a href="/memory">Purchase history</a> <a href="/analytics">Purchase patterns</a> <a href="/food-recall">Food you purchased</a> <a href="/ask">Ask history</a></p>
-      <h1>Receipt intake</h1>
-      <p class="lede">
-        Preserve the original receipt image, review the unconfirmed extraction, and
-        confirm the purchase explicitly. The original image stays unchanged.
-      </p>
+    <div class="app-shell">
+      __NAV__
+      <main id="main-content" class="app-main">
+      <header class="page-heading">
+        <div>
+          <p class="eyebrow">Scan · Understand · Remember</p>
+          <h1>Receipt intake</h1>
+          <p class="lede">Preserve the original receipt image, review the unconfirmed extraction, and confirm the purchase explicitly. The original image stays unchanged.</p>
+        </div>
+      </header>
 
       <form id="intake-form" class="panel" action="/api/receipts" method="post" enctype="multipart/form-data">
         <label for="receipt-file">Receipt image</label>
@@ -60,7 +62,8 @@
       </section>
 
       <p class="footnote">Original receipt bytes stay on this machine, separate from extracted candidates and confirmed purchases.</p>
-    </main>
+      </main>
+    </div>
     <script src="/static/app.js"></script>
   </body>
 </html>

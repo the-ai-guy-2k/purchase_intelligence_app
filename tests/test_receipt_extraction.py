@@ -258,7 +258,7 @@ def test_rerun_replaces_the_unconfirmed_extraction(client: TestClient, settings)
 
 
 def test_extraction_page_is_available(client: TestClient):
-    page = client.get("/")
+    page = client.get("/intake")
     script = client.get("/static/app.js")
 
     assert "Extract receipt" in page.text
