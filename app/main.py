@@ -277,6 +277,10 @@ def create_app(
         payload = purchase.to_public_dict()
         payload["memory_id"] = memory.memory_id
         payload["pantry_items"] = [item.to_public_dict() for item in pantry_items]
+        payload["applied_corrections"] = [
+            correction.to_public_dict()
+            for correction in corrections_for_extraction(settings, purchase.extraction_id)
+        ]
         return JSONResponse(status_code=201, content=payload)
 
     @app.get("/api/purchases/{purchase_id}")
@@ -291,6 +295,14 @@ def create_app(
         payload["applied_corrections"] = [
             correction.to_public_dict()
             for correction in corrections_for_extraction(settings, purchase.extraction_id)
+        ]
+        order = {item.purchase_item_id: index for index, item in enumerate(purchase.items)}
+        payload["pantry_items"] = [
+            item.to_public_dict()
+            for item in sorted(
+                (item for item in read_pantry(settings, None) if item.purchase_id == purchase_id),
+                key=lambda item: order.get(item.purchase_item_id, 0),
+            )
         ]
         return JSONResponse(status_code=200, content=payload)
 

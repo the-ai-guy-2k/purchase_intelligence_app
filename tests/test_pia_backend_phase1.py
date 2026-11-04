@@ -1,16 +1,17 @@
 """PIA backend phase 1 (Nov 4, 2026 lock): pantry + correction log + aliases.
 
-OCR is stubbed in the test runner (a fake `tesseract` on PATH that emits
-known receipt text); the parser, confirmation, pantry and correction
-logic under test are real. Real Tesseract ships in the Dockerfile.
+Runs against REAL Tesseract OCR (installed in CI and in the Dockerfile):
+the test renders a receipt image with DejaVu Bold text, uploads it, and
+lets Tesseract read it back. No stubbed OCR, no fake green.
 """
 
 from __future__ import annotations
 
 import io
+import subprocess
 
 from fastapi.testclient import TestClient
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 from app.receipt_intake.repository import read_original_bytes
 
@@ -26,7 +27,19 @@ RECEIPT_LINES = [
 
 
 def _png() -> bytes:
-    image = Image.new("RGB", (200, 200), "white")
+    """Render RECEIPT_LINES as a real receipt image for real OCR."""
+    font_path = subprocess.check_output(
+        ["fc-match", "-f", "%{file}", "DejaVu Sans:style=Bold"], timeout=5
+    ).decode("utf-8")
+    font = ImageFont.truetype(font_path, 56)
+    width = 1200
+    line_height = 90
+    image = Image.new("RGB", (width, 140 + line_height * len(RECEIPT_LINES)), "white")
+    draw = ImageDraw.Draw(image)
+    y = 60
+    for line in RECEIPT_LINES:
+        draw.text((70, y), line, fill="black", font=font)
+        y += line_height
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
     return buffer.getvalue()
