@@ -32,21 +32,26 @@ class Settings:
     def db_path(self) -> Path:
         return self.data_dir / "evidence.sqlite"
 
+    # Persistence rule (Nov 4, 2026): every database lives UNDER data_dir,
+    # which is the path mounted as the Docker volume. The previous
+    # data_dir.parent layout put all DBs except evidence.sqlite inside
+    # the container filesystem, so every container rebuild wiped
+    # purchases, pantry, memory, extractions and corrections.
     @property
     def extraction_db_path(self) -> Path:
-        return self.data_dir.parent / "receipt_extraction" / "extractions.sqlite"
+        return self.data_dir / "receipt_extraction" / "extractions.sqlite"
 
     @property
     def confirmed_db_path(self) -> Path:
-        return self.data_dir.parent / "confirmed_purchases" / "confirmed.sqlite"
+        return self.data_dir / "confirmed_purchases" / "confirmed.sqlite"
 
     @property
     def memory_db_path(self) -> Path:
-        return self.data_dir.parent / "purchase_memory" / "memory.sqlite"
+        return self.data_dir / "purchase_memory" / "memory.sqlite"
 
     @property
     def visual_db_path(self) -> Path:
-        return self.data_dir.parent / "visual_recall" / "visual.sqlite"
+        return self.data_dir / "visual_recall" / "visual.sqlite"
 
     @property
     def max_upload_megabytes(self) -> int:

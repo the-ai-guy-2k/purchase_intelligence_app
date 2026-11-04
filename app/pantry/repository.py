@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS pantry_history (
 
 
 def _connect(settings: Settings) -> sqlite3.Connection:
-    path = Path(settings.data_dir).parent / "pantry" / "pantry.sqlite"
+    path = Path(settings.data_dir) / "pantry" / "pantry.sqlite"
     path.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(path)
     connection.row_factory = sqlite3.Row

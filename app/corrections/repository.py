@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS corrections (
 
 
 def _connect(settings: Settings) -> sqlite3.Connection:
-    path = Path(settings.data_dir).parent / "corrections" / "corrections.sqlite"
+    path = Path(settings.data_dir) / "corrections" / "corrections.sqlite"
     path.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(path)
     connection.row_factory = sqlite3.Row
