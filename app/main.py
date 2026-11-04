@@ -16,6 +16,25 @@ from app.ai_intelligence.provider import AIProvider, ReplitAIProvider
 from app.ai_intelligence.routing import QuestionRejected, parse_question
 from app.ai_intelligence.service import ask_history
 from app.config import STATIC_DIR, Settings, load_settings, size_limit_message
+from app.corrections.repository import init_corrections_db
+from app.corrections.service import (
+    CorrectionNotFound,
+    CorrectionRejected,
+    corrections_for_extraction,
+    corrections_for_pattern,
+    record_correction,
+    suggestions_for_extraction,
+)
+from app.pantry.repository import init_pantry_db
+from app.pantry.service import (
+    PantryNotFound,
+    PantryRejected,
+    add_from_purchase,
+    add_manual_item,
+    read_item_with_history,
+    read_pantry,
+    set_status,
+)
 from app.purchase_analytics.service import build_analytics
 from app.purchase_confirmation.confidence import assess_extraction
 from app.purchase_memory.errors import MemoryNotFound, MemoryRejected, PurchaseNotFound
@@ -66,6 +85,8 @@ def create_app(
     init_confirmed_db(settings)
     init_memory_db(settings)
     init_visual_db(settings)
+    init_pantry_db(settings)
+    init_corrections_db(settings)
 
     app = FastAPI(
         title="Purchase Intelligence",
@@ -245,8 +266,17 @@ def create_app(
                 "The purchase was confirmed, but purchase history could not be saved.",
                 status_code=500,
             )
+        try:
+            pantry_items = add_from_purchase(settings, purchase)
+        except Exception:
+            confirmation_logger.exception("pantry update failed")
+            return _confirmation_rejected(
+                "The purchase was confirmed, but the pantry could not be updated.",
+                status_code=500,
+            )
         payload = purchase.to_public_dict()
         payload["memory_id"] = memory.memory_id
+        payload["pantry_items"] = [item.to_public_dict() for item in pantry_items]
         return JSONResponse(status_code=201, content=payload)
 
     @app.get("/api/purchases/{purchase_id}")
@@ -257,7 +287,150 @@ def create_app(
                 status_code=404,
                 content={"status": "not_found", "reason": "The confirmed purchase was not found."},
             )
-        return JSONResponse(status_code=200, content=purchase.to_public_dict())
+        payload = purchase.to_public_dict()
+        payload["applied_corrections"] = [
+            correction.to_public_dict()
+            for correction in corrections_for_extraction(settings, purchase.extraction_id)
+        ]
+        return JSONResponse(status_code=200, content=payload)
+
+    # Locked API aliases (Nov 4, 2026 spec). Same handlers, no new logic.
+    @app.post("/api/receipts/{evidence_id}/extract")
+    async def extract_receipt_alias(evidence_id: str) -> JSONResponse:
+        return await extract_receipt(evidence_id)
+
+    @app.get("/api/extractions/{extraction_id}")
+    def read_extraction_by_id(extraction_id: str) -> JSONResponse:
+        from app.receipt_extraction.repository import get_extraction_by_id
+
+        record = get_extraction_by_id(settings, extraction_id)
+        if record is None:
+            return JSONResponse(
+                status_code=404,
+                content={"status": "not_found", "reason": "The extraction was not found."},
+            )
+        return JSONResponse(status_code=200, content=_reviewed_extraction(settings, record))
+
+    @app.post("/api/purchases/confirm")
+    async def confirm_purchase_alias(request: Request) -> JSONResponse:
+        return await confirm_reviewed_purchase(request)
+
+    @app.get("/api/analytics/weekly")
+    def read_weekly_analytics() -> JSONResponse:
+        from collections import defaultdict
+        from datetime import date as _date
+        from decimal import Decimal, InvalidOperation
+
+        from app.purchase_memory.repository import list_memories
+
+        weekly: dict[str, Decimal] = defaultdict(lambda: Decimal("0"))
+        for entry in list_memories(settings, None):
+            day = entry.purchase_date
+            try:
+                parsed = _date.fromisoformat(day) if day else None
+            except ValueError:
+                parsed = None
+            if parsed is None:
+                continue
+            iso_year, iso_week, _ = parsed.isocalendar()
+            for item in entry.items:
+                try:
+                    weekly[f"{iso_year}-W{iso_week:02d}"] += Decimal(str(item.line_total or 0))
+                except (TypeError, ValueError, InvalidOperation):
+                    continue
+        return JSONResponse(
+            status_code=200,
+            content={
+                "status": "ok",
+                "weekly_spending": {key: float(value) for key, value in sorted(weekly.items())},
+            },
+        )
+
+    @app.get("/api/analytics/most-bought")
+    def read_most_bought_analytics() -> JSONResponse:
+        report = build_analytics(settings)
+        items = [
+            {
+                "item_name": item["item_name"],
+                "occurrence_count": item["occurrence_count"],
+                "first_purchase_date": item["first_purchase_date"],
+                "latest_purchase_date": item["latest_purchase_date"],
+            }
+            for item in report.get("repeat_items", [])
+        ]
+        return JSONResponse(status_code=200, content={"status": "ok", "most_bought": items})
+
+    # Pantry: What's in the house. Single user, no auth, no deletion.
+    @app.get("/api/pantry")
+    def list_pantry(status: str | None = None) -> JSONResponse:
+        try:
+            items = read_pantry(settings, status)
+        except PantryRejected as exc:
+            return JSONResponse(status_code=400, content={"status": "rejected", "reason": exc.reason})
+        return JSONResponse(
+            status_code=200,
+            content={"status": "ok", "items": [item.to_public_dict() for item in items]},
+        )
+
+    @app.post("/api/pantry")
+    async def add_pantry_item(request: Request) -> JSONResponse:
+        try:
+            payload = await request.json()
+        except json.JSONDecodeError:
+            return JSONResponse(status_code=400, content={"status": "rejected", "reason": "The item could not be read."})
+        try:
+            item = add_manual_item(settings, payload)
+        except PantryRejected as exc:
+            return JSONResponse(status_code=400, content={"status": "rejected", "reason": exc.reason})
+        return JSONResponse(status_code=201, content=item.to_public_dict())
+
+    @app.get("/api/pantry/{pantry_item_id}")
+    def read_pantry_item(pantry_item_id: str) -> JSONResponse:
+        payload = read_item_with_history(settings, pantry_item_id)
+        if payload is None:
+            return JSONResponse(status_code=404, content={"status": "not_found", "reason": "The pantry item was not found."})
+        return JSONResponse(status_code=200, content=payload)
+
+    @app.post("/api/pantry/{pantry_item_id}/status")
+    async def update_pantry_status(pantry_item_id: str, request: Request) -> JSONResponse:
+        try:
+            payload = await request.json()
+        except json.JSONDecodeError:
+            return JSONResponse(status_code=400, content={"status": "rejected", "reason": "The status could not be read."})
+        try:
+            item = set_status(settings, pantry_item_id, payload)
+        except PantryNotFound:
+            return JSONResponse(status_code=404, content={"status": "not_found", "reason": "The pantry item was not found."})
+        except PantryRejected as exc:
+            return JSONResponse(status_code=400, content={"status": "rejected", "reason": exc.reason})
+        return JSONResponse(status_code=200, content=item.to_public_dict())
+
+    # Correction log: record only. Never modifies the extraction.
+    @app.post("/api/extractions/{extraction_id}/correct")
+    async def correct_extraction(extraction_id: str, request: Request) -> JSONResponse:
+        try:
+            payload = await request.json()
+        except json.JSONDecodeError:
+            return JSONResponse(status_code=400, content={"status": "rejected", "reason": "The correction could not be read."})
+        try:
+            correction = record_correction(settings, extraction_id, payload)
+        except CorrectionNotFound:
+            return JSONResponse(status_code=404, content={"status": "not_found", "reason": "The extraction was not found."})
+        except CorrectionRejected as exc:
+            return JSONResponse(status_code=400, content={"status": "rejected", "reason": exc.reason})
+        return JSONResponse(status_code=201, content=correction.to_public_dict())
+
+    @app.get("/api/corrections")
+    def list_corrections(pattern: str | None = None) -> JSONResponse:
+        corrections = corrections_for_pattern(settings, pattern) if pattern else []
+        if pattern is None:
+            from app.corrections.repository import list_corrections as _list_all
+
+            corrections = _list_all(settings)
+        return JSONResponse(
+            status_code=200,
+            content={"status": "ok", "corrections": [c.to_public_dict() for c in corrections]},
+        )
 
     @app.get("/memory", response_class=HTMLResponse)
     def purchase_history() -> str:
@@ -427,6 +600,10 @@ def create_app(
 
 def _reviewed_extraction(settings: Settings, record: ExtractionRecord) -> dict[str, object]:
     payload = record.to_public_dict()
+    payload["suggestions"] = suggestions_for_extraction(settings, record)
+    payload["corrections"] = [
+        correction.to_public_dict() for correction in corrections_for_extraction(settings, record.extraction_id)
+    ]
     payload["confidence"] = assess_extraction(record)
     existing = get_purchase_for_extraction(settings, record.extraction_id)
     payload["confirmation_state"] = "confirmed" if existing else "unconfirmed"
