@@ -1,0 +1,51 @@
+# PIA frontend CI — Flutter UI, Purchase Intelligence by TAIG ITS.
+#
+# Runs in THIS repo (the-ai-guy-2k/pia_ui), where the Flutter code lives.
+# The backend repo (purchase_intelligence_app) carries no Flutter code,
+# so a Flutter workflow there would never run — that is why this file
+# lives here, not duplicated there.
+#
+# Jobs, in order:
+# - flutter analyze: proves the Dart code is clean.
+# - flutter test: runs the widget/unit tests in test/ (if any exist).
+# - flutter build web: proves the UI compiles to the web build that is
+#   served at http://138.68.226.24/pia-ui/ — same base href and API URL
+#   as the live demo build, so a broken build fails here, not at the fair.
+# No mobile (Android/iOS) build is attempted in CI: the demo target is web.
+
+name: Frontend CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  flutter:
+    name: Analyze, test, and build web
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
+
+      - name: Build web (demo configuration)
+        run: >-
+          flutter build web
+          --base-href=/pia-ui/
+          --dart-define=PIA_API_URL=http://138.68.226.24/pia-api
